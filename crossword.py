@@ -1,8 +1,52 @@
 from bs4 import BeautifulSoup
 from matplotlib import pyplot as plt
 import random
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-prompt = """I need your help to solve a crossword puzzle. I will give you a clue as well as any letters I have so far for the word I am working on. Give your reasoning for your prediction, and put the final word on a newline by itself without punctuation. If you are not 100 percent sure of the answer, say your answer is 404."""
+model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+device = "cuda" # the device to load the model onto
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype="auto",
+    device_map="auto"
+)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+
+
+
+def get_deepseek_prediction(clue):
+    prompt = """I need your help to solve a crossword puzzle. I will give you a clue as well as any letters I have so far for the word I am working on. Give your reasoning for your prediction. If you are not 100 percent sure of the answer, say your answer is 404."""
+    
+    # CoT
+    messages = [
+        {"role": "system", "content": "Please reason step by step, and put your final answer on a newline without any punctuation."},
+        {"role": "user", "content": prompt + "\n" + clue},
+    ]
+
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    model_inputs = tokenizer([text], return_tensors="pt").to(device)
+
+    generated_ids = model.generate(
+        **model_inputs,
+        max_new_tokens=32768
+    )
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    
+    print(response)
+    if "</think>\n" in response:
+        return response.split("\n")[-1].strip()
+    
+    return None
 
 def pretty_print(crossword):
     # Determine the maximum width of any cell (up to 3 characters)
@@ -97,7 +141,7 @@ def parse_crossword(html):
 
 # Example usage:
 # html = """<html>...your provided HTML here...</html>"""
-html = open('htmls/mini.html', 'r', encoding="utf-8")
+html = open('htmls/test.html', 'r', encoding="utf-8")
 cells, across, down = parse_crossword(html)
 xs = [cell['x'] for cell in cells]
 ys = [cell['y'] for cell in cells]
@@ -133,13 +177,17 @@ while not is_full(crossword):
     
     for clue_id in across:
         current_guess = get_current_guess(crossword, clue_id, 'Across')
-        print(f'{prompt}\n\nThe current clue is "{across[clue_id]}"\nThe current guess is {current_guess}. It is a {len(current_guess)} letter word.')
-        if "_" in current_guess:
-            guess_word(crossword, clue_id, 'Across', ''.join([random.choice(letters) for _ in range(len(current_guess))]))
+        pred = get_deepseek_prediction(f'The current clue is "{across[clue_id]}"\nThe current guess is {current_guess}. It is a {len(current_guess)} letter word.')
+        if pred and not pred.isnumeric():
+            guess_word(crossword, clue_id, 'Across', pred)
+        pretty_print(crossword)
     for clue_id in down:
         current_guess = get_current_guess(crossword, clue_id, 'Down')
-        if "_" in current_guess:
-            guess_word(crossword, clue_id, 'Down', ''.join([random.choice(letters) for _ in range(len(current_guess))]))
+        pred = get_deepseek_prediction(f'The current clue is "{down[clue_id]}"\nThe current guess is {current_guess}. It is a {len(current_guess)} letter word.')
+        if pred and not pred.isnumeric():
+            guess_word(crossword, clue_id, 'Down', pred)
+        pretty_print(crossword)
+        
 
 # guess_word(crossword, '1', 'Across', 'hello')
 pretty_print(crossword)
