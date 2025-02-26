@@ -12,7 +12,7 @@ class DeepseekModel():
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     def predict(self, prompt):
-        
+        print(prompt)
         # CoT
         messages = [
             {"role": "user", "content": prompt},
@@ -29,7 +29,7 @@ class DeepseekModel():
 
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens=2000,
+            max_new_tokens=5000,
             pad_token_id = pad_token_id,
             temperature=0.7
         )

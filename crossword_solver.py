@@ -68,7 +68,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--puzzle", type=str, default="htmls/mini.html")
-    parser.add_argument("--model_name", type=str, default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", help="Huggingface Reasoning Model")
+    parser.add_argument("--model_name", type=str, default="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", help="Huggingface Reasoning Model")
     parser.add_argument("--device", type=str, default="cuda", help="Cuda or CPU")
 
     args = parser.parse_args()

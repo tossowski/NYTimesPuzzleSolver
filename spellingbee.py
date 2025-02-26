@@ -1,8 +1,6 @@
 import argparse
-import pyautogui
-import win32gui
 from models.deepseek import DeepseekModel
-from ctypes import windll
+
 
 all_words = set()
 with open('words.txt', "r", encoding='utf-8') as f:
@@ -15,6 +13,7 @@ parser = argparse.ArgumentParser(description="Solve the NYT Spelling Bee puzzle.
 parser.add_argument("--center", help="The required center letter.")
 parser.add_argument("--letters", help="All available letters (including center).")
 parser.add_argument("--solver_type", help="Heuristic or AI", default='Heuristic')
+parser.add_argument("--device", help="cuda or cpu", default='cuda')
 
 args = parser.parse_args()
     
@@ -24,6 +23,9 @@ available_letters = args.letters.lower()
 
 
 if args.solver_type == 'Heuristic':
+    import pyautogui
+    import win32gui
+    from ctypes import windll
     valid_words = []
         
     for word in all_words:
@@ -70,6 +72,7 @@ if args.solver_type == 'Heuristic':
         pyautogui.press('enter')
 
 else:
-    model = DeepseekModel('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B', 'cpu')
-    prompt = f"""I need your help to solve the NYTimes Spelling Bee. The objective is to make as many valid words as possible using the letters I provide. Additionally, each word must use the center letter which I will also provide.\nThe letters are {','.join(args.letters)}.\nThe center letter is {args.center}.\nFind as many words satisfying these criteria as possible.Your answer should be on a newline, and contain a comma separated list of all the words you find."""
-    model.predict(prompt)
+    model = DeepseekModel('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B', args.device)
+    prompt = f"""I need your help to solve the NYTimes Spelling Bee. The objective is to make as many valid words as possible using the letters I provide. Additionally, each word must use the center letter which I will also provide.\nThe letters are {','.join(args.letters)}.\nThe center letter is {args.center}.\nFind as many words satisfying these criteria as possible. Your answer should be on a newline, and contain a comma separated list of all the words you find."""
+    output = model.predict(prompt)
+    print(output)
